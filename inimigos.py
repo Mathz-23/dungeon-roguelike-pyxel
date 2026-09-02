@@ -95,5 +95,3 @@ class Inimigo:
     def draw(self):
         pyxel.circ(self.x, self.y, self.raio, self.cor)
         pyxel.text(self.x - 10, self.y - 10, f"HP: {self.vida}", 7)  
-
-

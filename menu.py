@@ -1,33 +1,10 @@
 import pyxel
 
-class Player:
-    def __init__(self, x, y, radius, color):
-        self.x = x
-        self.y = y
-        self.radius = radius
-        self.color = color
-
-class Wall:
-    def __init__(self, x, y, width, height, color):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.color = color
-        
-class Game:
+class Menu:
     def __init__(self):
-        pyxel.init(256, 256)
-        
         pyxel.mouse(True)
-        
         self.state = "menu"
-
-        self.player = Player(20, 20, 6, 3)
-        self.wall = Wall(100, 102, 4, 200, 5)
-
-        pyxel.run(self.update, self.draw)
-
+        
 
     def update(self):
         if self.state == "menu":
@@ -41,7 +18,12 @@ class Game:
             
         elif self.state == "options":
             self.update_options()
-
+            
+        elif self.state == "pause":
+            self.update_pause()
+            
+        elif self.state == "game_over":
+            self.update_gameover()
 
     def draw(self):
         if self.state == "menu":
@@ -55,8 +37,15 @@ class Game:
             
         elif self.state == "options":
             self.draw_options()
-    def draw_menu_button(self, x, y, width, height, rect_color, text, text_color):
-
+            
+        elif self.state == "pause":
+            self.draw_pause()
+            
+        elif self.state == "game_over":
+            self.draw_gameover()
+            
+    def draw_button(self, x, y, width, height, rect_color, text, text_color):
+    
         pyxel.rect(x, y, width, height, rect_color)
         pyxel.rectb(x, y, width, height, 3)
 
@@ -90,10 +79,10 @@ class Game:
     def draw_menu(self):
         pyxel.cls(0)
         pyxel.mouse(True)
-        self.draw_menu_button(78, 130, 100, 20, 5, "PLAY GAME", 7)
-        self.draw_menu_button(78, 160, 100, 20, 5, "RULES", 7)
-        self.draw_menu_button(78, 190, 100, 20, 5, "OPTIONS", 7)
-        self.draw_menu_button(78, 220, 100, 20, 5, "EXIT GAME", 7)
+        self.draw_button(78, 130, 100, 20, 5, "PLAY GAME", 7)
+        self.draw_button(78, 160, 100, 20, 5, "RULES", 7)
+        self.draw_button(78, 190, 100, 20, 5, "OPTIONS", 7)
+        self.draw_button(78, 220, 100, 20, 5, "EXIT GAME", 7)
     
     def update_rules(self):
         pyxel.mouse(True)
@@ -126,33 +115,50 @@ class Game:
         pyxel.text(114, 14, "OPTIONS", 7)
         pyxel.rect(12, 234, 39, 10, 1)
         pyxel.text(14,236,"main menu",7)
+        
+    def update_pause(self):
+        if pyxel.btnp(pyxel.KEY_P):
+            self.state = "game"
+            
+    def draw_pause(self):
+        pyxel.cls(11)
+        pyxel.rect(2, 2, 252, 252, 3)
+        pyxel.text(110,10,"PAUSE",11)
+
+
+    def update_gameover(self):
+        pyxel.mouse(True)
+        if pyxel.mouse_x >= 12 and pyxel.mouse_x <= 50:
+            if pyxel.mouse_y >= 234 and pyxel.mouse_y <= 244:
+                if pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
+                    self.state = "menu"
+                    
+        if pyxel.mouse_x >= 204 and pyxel.mouse_x <= 242:
+            if pyxel.mouse_y >= 234 and pyxel.mouse_y <= 244:
+                if pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
+                    pyxel.quit()
+                    
+    def draw_gameover(self):
+        pyxel.cls(8)
+        pyxel.rect(2, 2, 252, 252, 0)
+        
+        pyxel.text(110,10,"GAME OVER",8)
+        pyxel.rect(12, 234, 39, 10, 8)
+        pyxel.text(14,236,"main menu",0)
+
+        pyxel.rect(204, 234, 39, 10, 8)
+        pyxel.text(206,236,"quit game",0)
+        
     def update_game(self):
         pyxel.mouse(False)
-        if pyxel.btn(pyxel.KEY_RIGHT):
-            self.player.x += 1
-        if pyxel.btn(pyxel.KEY_LEFT):
-            self.player.x -= 1
-        if pyxel.btn(pyxel.KEY_UP):
-            self.player.y -= 1
-        if pyxel.btn(pyxel.KEY_DOWN):
-            self.player.y += 1
+        
         if pyxel.btn(pyxel.KEY_BACKSPACE):
             self.state = "menu"
+        if pyxel.btn(pyxel.KEY_Q):
+            self.state = "game_over"
+        if pyxel.btnp(pyxel.KEY_P):
+            self.state = "pause"
             
-    def draw_game(self):
-        pyxel.cls(0)
-        pyxel.rect(
-            self.wall.x,
-            self.wall.y,
-            self.wall.width,
-            self.wall.height,
-            self.wall.color
-        )
 
-        pyxel.circ(
-            self.player.x,
-            self.player.y,
-            self.player.radius,
-            self.player.color
-        )
-Game()
+
+

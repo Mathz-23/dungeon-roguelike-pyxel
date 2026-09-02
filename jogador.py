@@ -62,7 +62,7 @@ class Personagem:
         
         # morte
         if self.vida <= 0:
-            pyxel.quit()
+            self.vida = 0
         self.dx = 0
         self.dy = 0
 
