@@ -22,16 +22,22 @@ class Personagem:
         self.y = y
         self.raio = raio
         self.cor = cor
-        self.velocidade_base = 2
-        self.velocidade_dash = 7
+        self.velocidade_base = 1.75
+        self.velocidade_dash = 6
 
         self.vida_max = 100
         self.vida = self.vida_max
         self.dano = 10
         self.defesa = 0
         
-        self.tem_espada = False
-        self.tem_armadura = False
+        self.upgrades = {
+            "espada": 0,
+            "armadura": 0,
+            "vida_extra": 0,
+            "bota_celeridade": 0,
+            "passo_sombrio": False,
+            "aura_espinhos": 0
+        }
         
         self.cooldown_dano = 0
         
@@ -40,11 +46,26 @@ class Personagem:
         self.dash = Dash()
         
     
-    def receber_dano(self, dano):
+    def receber_dano(self, dano, inimigo=None):
+        # dash
+        if self.dash.invencivel:
+            return
+
+        if self.dash.reducao_dano:
+            dano *= 0.15
+            dano = int(dano)
         
         self.vida -= dano
         
         self.cooldown_dano = 10
+
+
+        # aura de espinhos
+        if self.upgrades["aura_espinhos"] and inimigo:
+
+            dano_refletido = int(dano * 0.2)
+
+            inimigo.receber_dano(dano_refletido)
     
     
     def pegar_upgrade(self, upgrade):
@@ -62,7 +83,7 @@ class Personagem:
         
         # morte
         if self.vida <= 0:
-            self.vida = 0
+            pyxel.quit()
         self.dx = 0
         self.dy = 0
 
@@ -80,7 +101,10 @@ class Personagem:
 
 
         if pyxel.btn(pyxel.KEY_SHIFT) and (self.dx != 0 or self.dy != 0):
-            self.dash.usar()
+            
+            self.dash.usar(
+                self.upgrades["passo_sombrio"]
+            )
 
 
         self.dash.update()
@@ -118,10 +142,15 @@ class Personagem:
         # bola
         cor_atual = self.cor
 
-        if self.cooldown_dano > 0:
+        # passo sombrio
+        if self.upgrades["passo_sombrio"] and self.dash.ativo:
+            cor_atual = 0
+
+
+        if self.cooldown_dano > 0 and not self.upgrades["passo_sombrio"]:
             cor_atual = 13
 
-        if self.dash.iframe:
+        if self.dash.reducao_dano and not self.upgrades["passo_sombrio"]:
             cor_atual = 10
                 
 
@@ -135,7 +164,7 @@ class Personagem:
 
 
         # espada
-        if self.tem_espada:
+        if self.upgrades["espada"]:
 
             pyxel.rect(
                 self.x + 7,
@@ -147,7 +176,7 @@ class Personagem:
 
 
         # armadura
-        if self.tem_armadura:
+        if self.upgrades["armadura"]:
 
             pyxel.circb(
                 self.x,
@@ -155,6 +184,20 @@ class Personagem:
                 self.raio + 2,
                 10
             )
+            
+            
+        # aura de espinhos
+        if self.upgrades["aura_espinhos"]:
+
+            pyxel.circb(
+                self.x,
+                self.y,
+                self.raio + 4,
+                8
+            )
+        
+        
+        
         # barra de vida
         pyxel.rect(
             self.x - 15,
@@ -189,18 +232,31 @@ class Personagem:
 
 class Dash:
     def __init__(self):
+
         self.ativo = False
+        
         self.timer = 0
+        self.duracao = 10
+        
         self.cooldown = 0
         self.cooldown_max = 40
-        self.iframe = False
+        
+        self.reducao_dano = False
+        self.invencivel = False
 
 
-    def usar(self):
+    def usar(self, passo_sombrio=False):
+
         if self.cooldown <= 0:
+
             self.ativo = True
-            self.timer = 10
-            self.iframe = True
+            self.timer = self.duracao
+
+            self.reducao_dano = True
+
+            if passo_sombrio:
+                self.invencivel = True
+
             self.cooldown = self.cooldown_max
 
 
@@ -213,8 +269,9 @@ class Dash:
             self.timer -= 1
 
             if self.timer <= 0:
-                self.ativo = False 
-                self.iframe = False                       
+                self.ativo = False
+                self.reducao_dano = False
+                self.invencivel = False                    
  
 
     def draw_barra(self, x, y):
@@ -227,5 +284,5 @@ class Dash:
 
             pyxel.rect(x - largura//2 -10,y + 15,largura, altura,1)
 
-            pyxel.rect(x - largura//2 -10, y + 15, largura * progresso, altura, 11)
+            pyxel.rect(x - largura//2 -10, y + 15, largura * progresso, altura, 10)
         return

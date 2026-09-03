@@ -1,13 +1,15 @@
 import random
 
-from upgrades import Espada, Armadura, VidaExtra, BotaCeleridade
+from upgrades import Espada, Armadura, VidaExtra, BotaCeleridade, PassoSombrio, AuraEspinhos
 
 
 upgrades = [
     Espada,
     Armadura,
     VidaExtra,
-    BotaCeleridade
+    BotaCeleridade,
+    PassoSombrio,
+    AuraEspinhos
 ]
 
 

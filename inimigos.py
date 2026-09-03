@@ -10,10 +10,13 @@ class Inimigo:
         self.raio = 5
         self.cor = 4
 
-        self.vida = 30
+        self.vida = 7
         self.velocidade = 1
-        self.dano = 15
+        self.dano = 20
         self.cooldown_atq =  0
+        
+        self.ultimo_dano = 0
+        self.tempo_dano = 0
         
         
     def atacar(self, jogador):
@@ -35,12 +38,20 @@ class Inimigo:
 
             dano_real = max(0, self.dano - jogador.defesa)
 
-            if not jogador.dash.iframe:
+            if not jogador.dash.invencivel:
 
-                jogador.receber_dano(dano_real)
+                jogador.receber_dano(dano_real, self)
 
                 self.cooldown_atq = 60  
             
+     
+     
+    def receber_dano(self, dano):
+
+        self.vida -= dano 
+      
+        self.ultimo_dano = dano
+        self.tempo_dano = 20
         
     def seguir(self, jogador):
 
@@ -86,6 +97,9 @@ class Inimigo:
 
     def update(self, jogador, inimigos):
         
+        if self.tempo_dano > 0:
+            self.tempo_dano -= 1
+        
         self.atacar(jogador)
 
         self.seguir(jogador)
@@ -94,4 +108,21 @@ class Inimigo:
 
     def draw(self):
         pyxel.circ(self.x, self.y, self.raio, self.cor)
-        pyxel.text(self.x - 10, self.y - 10, f"HP: {self.vida}", 7)  
+
+        pyxel.text(
+            self.x - 10,
+            self.y - 10,
+            f"HP: {int(self.vida)}",
+            7
+        )
+
+        if self.tempo_dano > 0:
+
+            pyxel.text(
+                self.x - 10,
+                self.y - 20,
+                f"-{int(self.ultimo_dano)}",
+                8
+            )
+
+
