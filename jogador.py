@@ -1,32 +1,16 @@
 import pyxel
 import math
-
-
-class Jogo:
-    def __init__(self):
-        self.bola = Personagem(5, 250, 6, 3)
-       
-        
-    def update(self):
-        self.bola.update()
-        
-    def draw(self):
-        pyxel.cls(0)
-        self.bola.draw()
-        
+from entidades import Entidade
+from colisao import limitar_tela
 
         
-class Personagem:
+class Personagem(Entidade):
     def __init__(self, x, y, raio, cor):
-        self.x = x
-        self.y = y
-        self.raio = raio
+        super().__init__(x, y, raio, 100)
         self.cor = cor
         self.velocidade_base = 1.75
         self.velocidade_dash = 6
 
-        self.vida_max = 100
-        self.vida = self.vida_max
         self.dano = 10
         self.defesa = 0
         
@@ -45,6 +29,7 @@ class Personagem:
 
         self.dash = Dash()
         
+        
     
     def receber_dano(self, dano, inimigo=None):
         # dash
@@ -52,10 +37,11 @@ class Personagem:
             return
 
         if self.dash.reducao_dano:
-            dano *= 0.15
+            dano *= 0.3
             dano = int(dano)
         
-        self.vida -= dano
+        super().receber_dano(dano)
+        
         
         self.cooldown_dano = 10
 
@@ -77,6 +63,9 @@ class Personagem:
 
     def update(self):
         #dano
+        if self.tempo_dano > 0:
+            self.tempo_dano -= 1
+        
         if self.cooldown_dano > 0:
             self.cooldown_dano -= 1
         
@@ -127,16 +116,7 @@ class Personagem:
         self.x += self.dx * velocidade
         self.y += self.dy * velocidade
             
-       
-        # Colisão Tekla
-        if self.x - self.raio < 0:
-            self.x = self.raio
-        if self.x + self.raio > 255:
-            self.x = 255 - self.raio
-        if self.y - self.raio < 0:
-            self.y = self.raio
-        if self.y + self.raio > 255:
-            self.y = 255 - self.raio
+        limitar_tela(self)
                 
     def draw(self):
         # bola
@@ -153,6 +133,15 @@ class Personagem:
         if self.dash.reducao_dano and not self.upgrades["passo_sombrio"]:
             cor_atual = 10
                 
+        #dano
+        if self.tempo_dano > 0:
+        
+            pyxel.text(
+                self.x - 10,
+                self.y - 20,
+                f"-{int(self.ultimo_dano)}",
+                8
+            )
 
 
         pyxel.circ(
