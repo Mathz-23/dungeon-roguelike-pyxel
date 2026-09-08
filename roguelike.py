@@ -62,6 +62,7 @@ class Roguelike:
                     inimigo for inimigo in self.inimigos
                     if inimigo.vida > 0
                 ]
+                self.jogador.atacar(self.inimigos)
 
     def draw(self):
 

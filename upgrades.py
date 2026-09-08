@@ -12,14 +12,14 @@ class Espada(Upgrade):
 
         super().__init__(
             "Espada",
-            "Aumenta o dano em 10"
+            "Aumenta o dano em 5"
         )
 
 
     def efeito(self, jogador):
 
-        jogador.dano += 10
-        jogador.upgrades["espada"] += 10
+        jogador.dano += 5
+        jogador.upgrades["espada"] += 5
 
 
 
@@ -53,6 +53,7 @@ class VidaExtra(Upgrade):
     def efeito(self, jogador):
 
         jogador.vida += 25
+        jogador.vida_max += 25
         jogador.upgrades["vida_extra"] += 25
         
 
@@ -62,12 +63,13 @@ class BotaCeleridade(Upgrade):
         
         super().__init__(
         "Bota de Celeridade",
-        "Aumenta a velocidade de movimento em 1"
+        "Aumenta a velocidade de movimento e diminui o tempo de recarga do dash"
     )
         
     def efeito(self, jogador):
-        jogador.velocidade_base += 0.75
-        jogador.upgrades["bota_celeridade"] += 0.75
+        jogador.velocidade_base += 0.5
+        jogador.upgrades["bota_celeridade"] += 0.5
+        jogador.dash.cooldown_max -= 15
         
         
 class PassoSombrio(Upgrade):
@@ -76,7 +78,7 @@ class PassoSombrio(Upgrade):
 
         super().__init__(
             "Passo Sombrio",
-            "Aumenta o tempo de invencibilidade do dash"
+            "Melhora a invencibilidade do dash"
         )
 
 
@@ -98,4 +100,4 @@ class AuraEspinhos(Upgrade):
 
     def efeito(self, jogador):
 
-        jogador.upgrades["aura_espinhos"] += 20
+        jogador.upgrades["aura_espinhos"] = True

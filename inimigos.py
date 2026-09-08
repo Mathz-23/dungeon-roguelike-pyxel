@@ -6,29 +6,24 @@ from colisao import distancia, colidiu
 
 class Inimigo(Entidade):
     def __init__(self, x, y):
-        super().__init__(x, y, 5, 7)
+        super().__init__(x, y, 5, 7, 10)
         self.cor = 4
 
         self.velocidade = 1
-        self.dano = 20
-        self.cooldown_atq =  0
+        self.defesa = 0
         
         
     def atacar(self, jogador):
-
-        if self.cooldown_atq > 0:
-            self.cooldown_atq -= 1
+        if self.cooldown_ataque > 0:
             return
 
         if colidiu(self, jogador, 3):
 
             dano_real = max(0, self.dano - jogador.defesa)
 
-            if not jogador.dash.invencivel:
+            jogador.receber_dano(dano_real, self)
 
-                jogador.receber_dano(dano_real, self)
-
-                self.cooldown_atq = 60
+            self.cooldown_ataque = 50
             
       
         
@@ -71,14 +66,10 @@ class Inimigo(Entidade):
         
 
     def update(self, jogador, inimigos):
-        
-        if self.tempo_dano > 0:
-            self.tempo_dano -= 1
+        self.atualizar_temporizadores()
         
         self.atacar(jogador)
-
         self.seguir(jogador)
-
         self.separar(inimigos)
 
     def draw(self):
@@ -91,7 +82,7 @@ class Inimigo(Entidade):
             10
         )
 
-        if self.tempo_dano > 0:
+        if self.tempo_exibir_dano > 0:
 
             pyxel.text(
                 self.x - 10,
