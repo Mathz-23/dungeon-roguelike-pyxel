@@ -10,6 +10,9 @@ class Personagem(Entidade):
         self.cor = cor
         self.velocidade_base = 1.5
         self.velocidade_dash = 6
+        
+        self.direcao_x = 1
+        self.direcao_y = 0
 
         self.defesa = 0
         self.cooldown_ataque_max = 25
@@ -26,7 +29,46 @@ class Personagem(Entidade):
         self.inventario = []
 
         self.dash = Dash()
+    
+    def hitbox_ataque(self):
+        alcance = 15
+        largura = 10
         
+        #direita
+        if self.direcao_x == 1:
+            return (
+                self.x + self.raio,
+                self.y - largura / 2,
+                alcance,
+                largura
+            )
+            
+        #esquerda
+        if self.direcao_x == -1:
+            return (
+                self.x - self.raio - alcance,
+                self.y - largura / 2,
+                alcance,
+                largura
+            )
+        
+        #baixo
+        if self.direcao_y == 1:
+            return (
+                self.x - largura / 2,
+                self.y + self.raio,
+                largura,
+                alcance
+            )
+        #cima
+        if self.direcao_y == -1:
+            return (
+                self.x - largura / 2,
+                self.y - self.raio - alcance,
+                largura,
+                alcance
+            )
+
     def atacar(self, inimigos):
 
         if self.cooldown_ataque > 0:
@@ -46,6 +88,7 @@ class Personagem(Entidade):
                         self.cooldown_ataque = self.cooldown_ataque_max
 
                     return
+                
     def draw_barra_ataque(self):
         if self.cooldown_ataque > 0:
          
@@ -105,15 +148,23 @@ class Personagem(Entidade):
 
         if pyxel.btn(pyxel.KEY_RIGHT) or pyxel.btn(pyxel.KEY_D):
             self.dx += 1
+            self.direcao_x = 1
+            self.direcao_y = 0
 
         if pyxel.btn(pyxel.KEY_LEFT) or pyxel.btn(pyxel.KEY_A):
             self.dx -= 1
+            self.direcao_x = -1
+            self.direcao_y = 0
 
         if pyxel.btn(pyxel.KEY_DOWN) or pyxel.btn(pyxel.KEY_S):
             self.dy += 1
+            self.direcao_x = 0
+            self.direcao_y = 1
 
         if pyxel.btn(pyxel.KEY_UP) or pyxel.btn(pyxel.KEY_W):
             self.dy -= 1
+            self.direcao_x = 0
+            self.direcao_y = -1
 
 
         if pyxel.btn(pyxel.KEY_SHIFT) and (self.dx != 0 or self.dy != 0):

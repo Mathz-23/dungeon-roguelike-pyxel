@@ -20,7 +20,6 @@ class Roguelike:
             Inimigo(200,100),
             Inimigo(200,110),
             Inimigo(200,120),
-            Inimigo(200,130)
         ]
         
 
