@@ -2,10 +2,15 @@ import pyxel
 from jogador import Personagem
 from inventario import sortear_upgrades
 from inimigos import Inimigo
+from menu import Menu
 
 class Roguelike:
 
     def __init__(self):
+        self.menu = Menu()
+        self.reiniciar_jogo()
+
+    def reiniciar_jogo(self):
 
         self.jogador = Personagem(50,50,5,7)
 
@@ -27,6 +32,28 @@ class Roguelike:
 
 
     def update(self):
+        estado_anterior = self.menu.state
+        self.menu.update()
+        pyxel.mouse(self.menu.state != "game")
+
+        if estado_anterior == "menu" and self.menu.state == "game":
+            self.reiniciar_jogo()
+
+        if self.menu.state != "game" or estado_anterior != "game":
+            return
+
+        if self.jogador.vida <= 0:
+            self.menu.state = "game_over"
+            pyxel.mouse(True)
+            return
+
+        self.update_game()
+
+        if self.jogador.vida <= 0:
+            self.menu.state = "game_over"
+            pyxel.mouse(True)
+
+    def update_game(self):
 
         if self.escolhendo_upgrade:
 
@@ -65,6 +92,9 @@ class Roguelike:
                 self.jogador.atacar(self.inimigos)
 
     def draw(self):
+        if self.menu.state != "game":
+            self.menu.draw()
+            return
 
         pyxel.cls(0)
 
@@ -97,8 +127,7 @@ class Roguelike:
             
     
         
-pyxel.init(256,256)
-
-jogo = Roguelike()
-
-pyxel.run(jogo.update, jogo.draw)
+if __name__ == "__main__":
+    pyxel.init(256,256)
+    jogo = Roguelike()
+    pyxel.run(jogo.update, jogo.draw)
