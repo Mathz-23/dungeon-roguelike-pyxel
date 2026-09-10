@@ -29,9 +29,6 @@ class Menu:
         if self.state == "menu":
             self.draw_menu()
 
-        elif self.state == "game":
-            self.draw_game()
-            
         elif self.state == "rules":
             self.draw_rules()
             
@@ -104,6 +101,7 @@ class Menu:
         pyxel.rect(10, 10, 236, 236, 5)
         pyxel.rectb(116, 12, 23, 9, 3)
         pyxel.text(118, 14, "RULES", 7)
+        pyxel.text(20, 40, "WASD / SETAS: mover\nSHIFT: dash\nESPACO: atacar\n1 / 2: escolher upgrade\nP: pausar / continuar\nBACKSPACE: voltar ao menu", 7)
         pyxel.rect(12, 234, 20, 10, 1)
         pyxel.text(14,236,"menu",7)
         
@@ -113,6 +111,7 @@ class Menu:
         pyxel.rect(10, 10, 236, 236, 5)
         pyxel.rectb(112, 12, 31, 9, 3)
         pyxel.text(114, 14, "OPTIONS", 7)
+        pyxel.text(20, 40, "Nenhuma opcao disponivel ainda.", 7)
         pyxel.rect(12, 234, 39, 10, 1)
         pyxel.text(14,236,"main menu",7)
         
@@ -124,6 +123,7 @@ class Menu:
         pyxel.cls(11)
         pyxel.rect(2, 2, 252, 252, 3)
         pyxel.text(110,10,"PAUSE",11)
+        pyxel.text(68, 120, "Pressione P para continuar", 11)
 
 
     def update_gameover(self):
@@ -152,13 +152,10 @@ class Menu:
     def update_game(self):
         pyxel.mouse(False)
         
-        if pyxel.btn(pyxel.KEY_BACKSPACE):
+        if pyxel.btnp(pyxel.KEY_BACKSPACE):
             self.state = "menu"
-        if pyxel.btn(pyxel.KEY_Q):
-            self.state = "game_over"
-        if pyxel.btnp(pyxel.KEY_P):
+        elif pyxel.btnp(pyxel.KEY_P):
             self.state = "pause"
             
-
 
 
