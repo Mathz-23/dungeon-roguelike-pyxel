@@ -17,7 +17,10 @@ class Roguelike:
         
         self.inimigos = [
             Inimigo(200,90),
-            Inimigo(200,100)
+            Inimigo(200,100),
+            Inimigo(200,110),
+            Inimigo(200,120),
+            Inimigo(200,130)
         ]
         
 
@@ -100,28 +103,47 @@ class Roguelike:
 
 
         if self.escolhendo_upgrade:
-
             pyxel.text(
-                20,
-                20,
+                90,
+                30,
                 "Escolha um upgrade:",
                 7
             )
 
+            posicoes = [
+                (20, 90),
+                (140, 90)
+            ]
 
             for i, nome in enumerate(self.mensagem):
 
+                x, y = posicoes[i]
+
+                pyxel.rect(
+                    x,
+                    y,
+                    95,
+                    50,
+                    1
+                )
+
+                pyxel.rectb(
+                    x,
+                    y,
+                    95,
+                    50,
+                    7
+                )
+
                 pyxel.text(
-                    20,
-                    40 + i * 10,
-                    str(i+1) + " - " + nome,
+                    x + 5,
+                    y + 22,
+                    str(i + 1) + " - " + nome,
                     7
                 )
 
         else:
-
             self.jogador.draw()
-
             for inimigo in self.inimigos:
                 inimigo.draw()
             

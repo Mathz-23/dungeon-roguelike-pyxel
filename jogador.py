@@ -12,7 +12,7 @@ class Personagem(Entidade):
         self.velocidade_dash = 6
 
         self.defesa = 0
-        self.cooldown_ataque_max = 20
+        self.cooldown_ataque_max = 25
         
         self.upgrades = {
             "espada": 0,

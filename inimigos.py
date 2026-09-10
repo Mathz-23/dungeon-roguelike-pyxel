@@ -6,7 +6,7 @@ from colisao import distancia, colidiu
 
 class Inimigo(Entidade):
     def __init__(self, x, y):
-        super().__init__(x, y, 5, 7, 10)
+        super().__init__(x, y, 5, 10, 10)
         self.cor = 4
 
         self.velocidade = 1
