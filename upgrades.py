@@ -109,12 +109,11 @@ class CuraContinua(Upgrade):
     def __init__(self):
 
         super().__init__(
-            "Cura Contínua",
-            "Regenera 1 de vida a cada 2 segundos"
+            "Cura Continua",
+            "Regenera 1 de vida a cada 3 segundos"
         )
 
 
     def efeito(self, jogador):
-        if jogador.vida < jogador.vida_max:
-            jogador.vida += 1
         jogador.upgrades["cura_continua"] = True
+        jogador.timer_cura = 0

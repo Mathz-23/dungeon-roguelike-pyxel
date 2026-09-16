@@ -12,7 +12,7 @@ class Roguelike:
 
     def reiniciar_jogo(self):
 
-        self.jogador = Personagem(50,50,5,7)
+        self.jogador = Personagem(50, 50, 10, 10, 7)
 
         
         self.inimigos = [
@@ -36,7 +36,7 @@ class Roguelike:
     def update(self):
         estado_anterior = self.menu.state
         self.menu.update()
-        pyxel.mouse(self.menu.state != "game")
+        pyxel.mouse(True)
 
         if estado_anterior == "menu" and self.menu.state == "game":
             self.reiniciar_jogo()
@@ -78,20 +78,18 @@ class Roguelike:
 
 
         else:
-
             self.jogador.update()
+            self.jogador.atacar(self.inimigos)
 
             for inimigo in self.inimigos:
-                inimigo.update(
-                    self.jogador,
-                    self.inimigos
-                )
+                if inimigo.esta_vivo() and self.jogador.esta_vivo():
+                    inimigo.update(self.jogador, self.inimigos)
 
-                self.inimigos = [
-                    inimigo for inimigo in self.inimigos
-                    if inimigo.vida > 0
-                ]
-                self.jogador.atacar(self.inimigos)
+            self.inimigos = [
+                inimigo
+                for inimigo in self.inimigos
+                if inimigo.esta_vivo()
+            ]
 
     def draw(self):
         if self.menu.state != "game":
@@ -149,6 +147,6 @@ class Roguelike:
     
         
 if __name__ == "__main__":
-    pyxel.init(256,256)
+    pyxel.init(256,256,fps=30)
     jogo = Roguelike()
     pyxel.run(jogo.update, jogo.draw)

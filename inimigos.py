@@ -6,7 +6,7 @@ from colisao import distancia, colidiu
 
 class Inimigo(Entidade):
     def __init__(self, x, y):
-        super().__init__(x, y, 5, 10, 10)
+        super().__init__(x, y, 10, 10, 10, 10)
         self.cor = 4
 
         self.velocidade = 1
@@ -17,7 +17,7 @@ class Inimigo(Entidade):
         if self.cooldown_ataque > 0:
             return
 
-        if colidiu(self, jogador, 3):
+        if colidiu(self, jogador, 2):
 
             dano_real = max(0, self.dano - jogador.defesa)
 
@@ -34,7 +34,7 @@ class Inimigo(Entidade):
 
         distancia_atual = distancia(self, jogador)
 
-        if not colidiu(self, jogador, 3):
+        if not colidiu(self, jogador, 2):
 
             dx /= distancia_atual
             dy /= distancia_atual
@@ -73,7 +73,13 @@ class Inimigo(Entidade):
         self.separar(inimigos)
 
     def draw(self):
-        pyxel.circ(self.x, self.y, self.raio, self.cor)
+        pyxel.rect(
+            self.x,
+            self.y,
+            self.largura,
+            self.altura,
+            self.cor
+)
 
         pyxel.text(
             self.x - 10,
