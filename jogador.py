@@ -1,18 +1,31 @@
 import pyxel
 import math
 from entidades import Entidade
-from colisao import colidiu, limitar_tela
+from colisao import ataque_colidiu, limitar_tela
 
         
 class Personagem(Entidade):
-    def __init__(self, x, y, raio, cor):
-        super().__init__(x, y, raio, 50, 3)
+    def __init__(self, x, y, largura, altura, cor):
+        super().__init__(x, y, largura, altura, 50, 3)
         self.cor = cor
         self.velocidade_base = 1.5
         self.velocidade_dash = 6
+        
+        self.direcao_x = 1
+        self.direcao_y = 0
+        self.mira_teclado = False
+        self.ultima_posicao_mouse = (pyxel.mouse_x, pyxel.mouse_y)
 
         self.defesa = 0
+        self.ultima_cura = 0
+        self.tempo_exibir_cura = 0
+        self.timer_cura = 0
         self.cooldown_ataque_max = 25
+        self.tempo_visual_ataque = 0
+        self.area_ultimo_ataque = None
+        self.direcao_ultimo_ataque = (1, 0)
+        self.proxima_mao = 1  # 1: direita; -1: esquerda
+        self.mao_ultimo_soco = 1
         
         self.upgrades = {
             "espada": 0,
@@ -20,45 +33,122 @@ class Personagem(Entidade):
             "vida_extra": 0,
             "bota_celeridade": 0,
             "passo_sombrio": False,
-            "aura_espinhos": False
+            "aura_espinhos": False,
+            "cura_continua": False
         }
         
         self.inventario = []
 
         self.dash = Dash()
+    
+    def hitbox_ataque(self):
+        alcance = 15
+        espessura = 10
         
-    def atacar(self, inimigos):
+        centro_x = self.x + self.largura / 2
+        centro_y = self.y + self.altura / 2
+        
+        
+        #direita
+        if self.direcao_x == 1:
+            return (
+                self.x + self.largura,
+                centro_y - espessura / 2,
+                alcance,
+                espessura
+            )
+            
+        #esquerda
+        if self.direcao_x == -1:
+            return (
+                self.x - alcance,
+                centro_y - espessura / 2,
+                alcance,
+                espessura
+            )
+        
+        #baixo
+        if self.direcao_y == 1:
+            return (
+                centro_x - espessura / 2,
+                self.y + self.altura,
+                espessura,
+                alcance
+            )
+        #cima
+        return (
+            centro_x - espessura / 2,
+            self.y - alcance,
+            espessura,
+            alcance
+        )
 
+    def atacar(self, inimigos):
         if self.cooldown_ataque > 0:
             return
 
-        if pyxel.btn(pyxel.KEY_SPACE):
+        quer_atacar = (
+            pyxel.btn(pyxel.MOUSE_BUTTON_LEFT)
+            or pyxel.btn(pyxel.KEY_SPACE)
+        )
+        if not quer_atacar:
+            return
 
-            for inimigo in inimigos:
+        area = self.hitbox_ataque()
+        self.area_ultimo_ataque = area
+        self.direcao_ultimo_ataque = (self.direcao_x, self.direcao_y)
+        self.tempo_visual_ataque = 6
+        self.cooldown_ataque = self.cooldown_ataque_max
 
-                if colidiu(self, inimigo, 10):
+        if not self.upgrades["espada"]:
+            self.mao_ultimo_soco = self.proxima_mao
+            self.proxima_mao *= -1
 
-                    dano_real = max(0, self.dano - inimigo.defesa)
+        for inimigo in inimigos:
+            if not inimigo.esta_vivo():
+                continue
 
-                    acertou = inimigo.receber_dano(dano_real)
-
-                    if acertou:
-                        self.cooldown_ataque = self.cooldown_ataque_max
-
-                    return
+            if ataque_colidiu(area, inimigo):
+                dano_real = max(0, self.dano - inimigo.defesa)
+                if inimigo.receber_dano(dano_real):
+                    break
+                
     def draw_barra_ataque(self):
         if self.cooldown_ataque > 0:
          
             largura = 6
             altura = 5
 
+            centro_x = self.x + self.largura / 2
+            x = centro_x - largura // 2 + 10
+            y = self.y + self.altura + 10
+
             progresso = 1 - (self.cooldown_ataque / self.cooldown_ataque_max)
 
-            pyxel.rect(self.x - largura//2 +10, self.y + 15,largura, altura,1)
+            pyxel.rect(x, y, largura, altura, 1)
 
-            pyxel.rect(self.x - largura//2 +10, self.y + 15, largura * progresso, altura, 14)
+            pyxel.rect(x, y, largura * progresso, altura, 14)
         return
     
+    def atualizar_cura(self):
+        if not self.upgrades["cura_continua"]:
+            return
+
+        if not self.esta_vivo():
+            return
+
+        self.timer_cura += 1
+
+        if self.timer_cura >= 90:
+            self.timer_cura = 0
+
+            vida_anterior = self.vida
+            self.vida = min(self.vida + 1, self.vida_max)
+            cura_real = self.vida - vida_anterior
+
+            if cura_real > 0:
+                self.ultima_cura = cura_real
+                self.tempo_exibir_cura = 20
     
     def receber_dano(self, dano, inimigo=None):
         # Passo Sombrio
@@ -92,9 +182,59 @@ class Personagem(Entidade):
         upgrade.efeito(self)
                 
 
+    def atualizar_mira(self):
+        posicao_mouse = (pyxel.mouse_x, pyxel.mouse_y)
+        mouse_moveu = posicao_mouse != self.ultima_posicao_mouse
+        self.ultima_posicao_mouse = posicao_mouse
+
+        # Setas seguradas tem prioridade sobre o mouse.
+        direcoes = (
+            (pyxel.KEY_RIGHT, 1, 0),
+            (pyxel.KEY_LEFT, -1, 0),
+            (pyxel.KEY_DOWN, 0, 1),
+            (pyxel.KEY_UP, 0, -1),
+        )
+        for tecla, direcao_x, direcao_y in direcoes:
+            if pyxel.btn(tecla):
+                self.direcao_x = direcao_x
+                self.direcao_y = direcao_y
+                self.mira_teclado = True
+                return
+
+        if mouse_moveu:
+            self.mira_teclado = False
+
+        if self.mira_teclado:
+            return
+
+        centro_x = self.x + self.largura / 2
+        centro_y = self.y + self.altura / 2
+
+        dx = pyxel.mouse_x - centro_x
+        dy = pyxel.mouse_y - centro_y
+
+        # Mantem a direcao quando o cursor esta no centro.
+        if dx == 0 and dy == 0:
+            return
+
+        if abs(dx) >= abs(dy):
+            self.direcao_x = 1 if dx > 0 else -1
+            self.direcao_y = 0
+        else:
+            self.direcao_x = 0
+            self.direcao_y = 1 if dy > 0 else -1
+
     def update(self):
         #dano
         self.atualizar_temporizadores()
+
+        if self.tempo_visual_ataque > 0:
+            self.tempo_visual_ataque -= 1
+        
+        if self.tempo_exibir_cura > 0:
+            self.tempo_exibir_cura -= 1
+            
+        self.atualizar_cura()
         
         
         # morte
@@ -103,16 +243,16 @@ class Personagem(Entidade):
         self.dx = 0
         self.dy = 0
 
-        if pyxel.btn(pyxel.KEY_RIGHT) or pyxel.btn(pyxel.KEY_D):
+        if pyxel.btn(pyxel.KEY_D):
             self.dx += 1
 
-        if pyxel.btn(pyxel.KEY_LEFT) or pyxel.btn(pyxel.KEY_A):
+        if pyxel.btn(pyxel.KEY_A):
             self.dx -= 1
 
-        if pyxel.btn(pyxel.KEY_DOWN) or pyxel.btn(pyxel.KEY_S):
+        if pyxel.btn(pyxel.KEY_S):
             self.dy += 1
 
-        if pyxel.btn(pyxel.KEY_UP) or pyxel.btn(pyxel.KEY_W):
+        if pyxel.btn(pyxel.KEY_W):
             self.dy -= 1
 
 
@@ -144,120 +284,146 @@ class Personagem(Entidade):
         self.y += self.dy * velocidade
             
         limitar_tela(self)
+        self.atualizar_mira()
                 
     def draw(self):
-        # bola
+        centro_x = self.x + self.largura / 2
+        centro_y = self.y + self.altura / 2
+        base_y = self.y + self.altura
+
         cor_atual = self.cor
-        
-        # passo sombrio
+
         if self.upgrades["passo_sombrio"] and self.dash.ativo:
             cor_atual = 0
 
-
-        if self.cooldown_receber_dano > 0 and not self.upgrades["passo_sombrio"]:
+        if (
+            self.cooldown_receber_dano > 0
+            and not self.upgrades["passo_sombrio"]
+        ):
             cor_atual = 13
 
-        if self.dash.reducao_dano and not self.upgrades["passo_sombrio"]:
+        if (
+            self.dash.reducao_dano
+            and not self.upgrades["passo_sombrio"]
+        ):
             cor_atual = 10
-                
-        #dano
-        if self.tempo_exibir_dano > 0:
-        
+
+        # cura
+        if self.tempo_exibir_cura > 0:
             pyxel.text(
-                self.x - 10,
-                self.y - 20,
+                centro_x - 10,
+                self.y - 23,
+                f"+{int(self.ultima_cura)}",
+                11
+            )
+
+        # dano
+        if self.tempo_exibir_dano > 0:
+            pyxel.text(
+                centro_x - 10,
+                self.y - 15,
                 f"-{int(self.ultimo_dano)}",
                 8
             )
 
-
-        pyxel.circ(
+        # corpo
+        pyxel.rect(
             self.x,
             self.y,
-            self.raio,
+            self.largura,
+            self.altura,
             cor_atual
         )
 
+        # Visual do golpe: espada ou pequeno punho.
+        if self.tempo_visual_ataque > 0:
+            x, y, largura, altura = self.area_ultimo_ataque
 
-        # espada
-        if self.upgrades["espada"]:
-
-            if self.cooldown_ataque > 0:
-                # atacando
-                pyxel.rect(
-                    self.x + 7,
-                    self.y + 1,
-                    20,
-                    3,
-                    2
-                )
-
+            if self.upgrades["espada"]:
+                pyxel.rectb(x, y, largura, altura, 7)
+                if largura > altura:
+                    pyxel.rect(x, y + (altura - 3) / 2, largura, 3, 2)
+                else:
+                    pyxel.rect(x + (largura - 3) / 2, y, 3, altura, 2)
             else:
-                # normal
-                pyxel.rect(
-                    self.x + 7,
-                    self.y - 15,
-                    3,
-                    20,
-                    2
-                )
+                tamanho = 4
+                direcao_x, direcao_y = self.direcao_ultimo_ataque
+                punho_x = centro_x - tamanho / 2
+                punho_y = centro_y - tamanho / 2
 
+                if direcao_x == 1:
+                    punho_x = self.x + self.largura
+                elif direcao_x == -1:
+                    punho_x = self.x - tamanho
+                elif direcao_y == 1:
+                    punho_y = self.y + self.altura
+                else:
+                    punho_y = self.y - tamanho
+
+                # Mantem a mao escolhida durante toda a animacao do soco.
+                deslocamento_braco = 4 * self.mao_ultimo_soco
+                punho_x -= direcao_y * deslocamento_braco
+                punho_y += direcao_x * deslocamento_braco
+
+                pyxel.rect(punho_x, punho_y, tamanho, tamanho, cor_atual)
+
+        # Espada em repouso acompanha a direcao do jogador.
+        elif self.upgrades["espada"]:
+            comprimento = 8
+            espessura = 3
+
+            if self.direcao_x == 1:
+                pyxel.rect(self.x + self.largura, centro_y - espessura / 2,
+                           comprimento, espessura, 2)
+            elif self.direcao_x == -1:
+                pyxel.rect(self.x - comprimento, centro_y - espessura / 2,
+                           comprimento, espessura, 2)
+            elif self.direcao_y == 1:
+                pyxel.rect(centro_x - espessura / 2, self.y + self.altura,
+                           espessura, comprimento, 2)
+            else:
+                pyxel.rect(centro_x - espessura / 2, self.y - comprimento,
+                           espessura, comprimento, 2)
 
         # armadura
         if self.upgrades["armadura"]:
-
-            pyxel.circb(
-                self.x,
-                self.y,
-                self.raio + 2,
+            pyxel.rectb(
+                self.x - 2,
+                self.y - 2,
+                self.largura + 4,
+                self.altura + 4,
                 10
             )
-            
-            
+
         # aura de espinhos
         if self.upgrades["aura_espinhos"]:
-
-            pyxel.circb(
-                self.x,
-                self.y,
-                self.raio + 4,
+            pyxel.rectb(
+                self.x - 4,
+                self.y - 4,
+                self.largura + 8,
+                self.altura + 8,
                 8
             )
-        
-        
-        
+
         # barra de vida
-        pyxel.rect(
-            self.x - 15,
-            self.y + 8,
-            30,
-            5,
-            8
-        )
+        barra_x = centro_x - 15
+        barra_y = base_y + 3
 
+        progresso = max(0, min(1, self.vida / self.vida_max))
 
-        progresso = self.vida / self.vida_max
+        pyxel.rect(barra_x, barra_y, 30, 5, 8)
+        pyxel.rect(barra_x, barra_y, 30 * progresso, 5, 11)
 
-
-        pyxel.rect(
-            self.x - 15,
-            self.y + 8,
-            30 * progresso,
-            5,
-            11
-)
-        
         pyxel.text(
-            self.x - 12,
-            self.y + 8,
-            str(self.vida) + "/" + str(self.vida_max),
+            barra_x + 3,
+            barra_y,
+            f"{self.vida}/{self.vida_max}",
             7
         )
-        # dash
-        self.dash.draw_barra_dash(self.x, self.y)
+
+        # a função do dash já desenha 15 pixels abaixo
+        self.dash.draw_barra_dash(centro_x, base_y - 5)
         self.draw_barra_ataque()
-        
-        
 
 class Dash:
     def __init__(self):

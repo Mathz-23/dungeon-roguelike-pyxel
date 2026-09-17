@@ -1,8 +1,10 @@
 class Entidade:
-    def __init__(self, x, y, raio, vida, dano):
+    def __init__(self, x, y, largura, altura, vida, dano):
         self.x = x
         self.y = y
-        self.raio = raio
+       
+        self.largura = largura
+        self.altura = altura
 
         self.vida = vida
         self.vida_max = vida

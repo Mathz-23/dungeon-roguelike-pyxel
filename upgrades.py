@@ -101,3 +101,19 @@ class AuraEspinhos(Upgrade):
     def efeito(self, jogador):
 
         jogador.upgrades["aura_espinhos"] = True
+        
+    
+
+class CuraContinua(Upgrade):
+
+    def __init__(self):
+
+        super().__init__(
+            "Cura Continua",
+            "Regenera 1 de vida a cada 3 segundos"
+        )
+
+
+    def efeito(self, jogador):
+        jogador.upgrades["cura_continua"] = True
+        jogador.timer_cura = 0

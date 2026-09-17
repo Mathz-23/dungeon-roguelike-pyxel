@@ -101,7 +101,7 @@ class Menu:
         pyxel.rect(10, 10, 236, 236, 5)
         pyxel.rectb(116, 12, 23, 9, 3)
         pyxel.text(118, 14, "RULES", 7)
-        pyxel.text(20, 40, "WASD / SETAS: mover\nSHIFT: dash\nESPACO: atacar\n1 / 2: escolher upgrade\nP: pausar / continuar\nBACKSPACE: voltar ao menu", 7)
+        pyxel.text(20, 40, "WASD: mover\nMOUSE / SETAS: mirar\nSHIFT: dash\nCLIQUE ESQUERDO / ESPACO: atacar\n1 / 2: escolher upgrade\nP: pausar / continuar\nBACKSPACE: voltar ao menu", 7)
         pyxel.rect(12, 234, 20, 10, 1)
         pyxel.text(14,236,"menu",7)
         
@@ -150,7 +150,7 @@ class Menu:
         pyxel.text(206,236,"quit game",0)
         
     def update_game(self):
-        pyxel.mouse(False)
+        pyxel.mouse(True)
         
         if pyxel.btnp(pyxel.KEY_BACKSPACE):
             self.state = "menu"
