@@ -361,7 +361,7 @@ class Personagem(Entidade):
                     punho_y = self.y - tamanho
 
                 # Mantem a mao escolhida durante toda a animacao do soco.
-                deslocamento_braco = 3 * self.mao_ultimo_soco
+                deslocamento_braco = 4 * self.mao_ultimo_soco
                 punho_x -= direcao_y * deslocamento_braco
                 punho_y += direcao_x * deslocamento_braco
 
