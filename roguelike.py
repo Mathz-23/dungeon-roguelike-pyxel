@@ -1,8 +1,9 @@
 import pyxel
+import textwrap
 from jogador import Personagem
 from inventario import sortear_upgrades
-from inimigos import Inimigo
 from menu import Menu
+from mapa import Mapa
 
 class Roguelike:
 
@@ -13,20 +14,15 @@ class Roguelike:
     def reiniciar_jogo(self):
 
         self.jogador = Personagem(50, 50, 10, 10, 7)
-
-        
-        self.inimigos = [
-            Inimigo(200,90),
-            Inimigo(200,100),
-            Inimigo(200,110),
-            Inimigo(200,120),
-        ]
-        
-
-        self.opcoes = sortear_upgrades()
-
+        self.mapa = Mapa()
+        self.inimigos = self.mapa.sala_atual.inimigos
+        self.opcoes = []
         self.mensagem = []
+        self.escolhendo_upgrade = False
 
+    def preparar_upgrade(self):
+        self.opcoes = sortear_upgrades(self.jogador)
+        self.mensagem = []
         self.escolhendo_upgrade = True
 
         for upgrade in self.opcoes:
@@ -79,6 +75,15 @@ class Roguelike:
 
         else:
             self.jogador.update()
+            if self.mapa.tentar_mudar_sala(self.jogador):
+                self.inimigos = self.mapa.sala_atual.inimigos
+
+            self.mapa.coletar_chave(self.jogador)
+            self.mapa.abrir_bau(self.jogador)
+
+            if self.mapa.tentar_proximo_andar(self.jogador):
+                self.inimigos = self.mapa.sala_atual.inimigos
+
             self.jogador.atacar(self.inimigos)
 
             for inimigo in self.inimigos:
@@ -90,6 +95,10 @@ class Roguelike:
                 for inimigo in self.inimigos
                 if inimigo.esta_vivo()
             ]
+            self.mapa.sala_atual.inimigos = self.inimigos
+
+            if self.mapa.concluir_sala():
+                self.preparar_upgrade()
 
     def draw(self):
         if self.menu.state != "game":
@@ -132,17 +141,39 @@ class Roguelike:
                     7
                 )
 
-                pyxel.text(
-                    x + 5,
-                    y + 22,
-                    str(i + 1) + " - " + nome,
-                    7
-                )
+                nivel = getattr(self.opcoes[i], "nivel", 1)
+                titulo = str(i + 1) + " - " + nome
+
+                if nivel > 1:
+                    linhas = textwrap.wrap(titulo, width=21)
+                    for linha, texto in enumerate(linhas):
+                        pyxel.text(x + 5, y + 6 + linha * 8, texto, 7)
+
+                    pyxel.text(
+                        x + 5,
+                        y + 28,
+                        "Nivel " + str(nivel - 1) + " -> " + str(nivel),
+                        7,
+                    )
+                    bonus = getattr(
+                        self.opcoes[i], "bonus_melhoria", "Melhoria"
+                    )
+                    pyxel.text(x + 5, y + 38, bonus, 10)
+                else:
+                    pyxel.text(x + 5, y + 22, titulo, 7)
 
         else:
+            self.mapa.draw()
             self.jogador.draw()
             for inimigo in self.inimigos:
                 inimigo.draw()
+            self.mapa.draw_minimapa()
+            pyxel.text(8, 8, "Arma: " + self.jogador.arma_equipada, 7)
+
+            if self.mapa.jogo_concluido:
+                pyxel.rect(48, 100, 160, 50, 0)
+                pyxel.rectb(48, 100, 160, 50, 7)
+                pyxel.text(73, 120, "Voce venceu os 5 andares!", 10)
             
     
         
