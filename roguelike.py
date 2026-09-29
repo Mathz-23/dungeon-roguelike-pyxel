@@ -1,10 +1,9 @@
 import pyxel
 import textwrap
-import random
 from jogador import Personagem
 from inventario import sortear_upgrades
-from inimigos import Inimigo
 from menu import Menu
+from mapa import Mapa
 
 class Roguelike:
 
@@ -15,35 +14,15 @@ class Roguelike:
     def reiniciar_jogo(self):
 
         self.jogador = Personagem(50, 50, 10, 10, 7)
-        self.fase = 0
-        self.inimigos = []
-        self.preparar_upgrade()
-
-    def iniciar_fase(self):
-        self.fase += 1
-        # Reposiciona o mesmo jogador, preservando vida e upgrades.
-        self.jogador.x = 50
-        self.jogador.y = 50
-        self.jogador.tempo_visual_ataque = 0
-        self.jogador.area_ultimo_ataque = None
-        maximo_inimigos = self.fase * 2
-        quantidade = (
-            2 if self.fase == 1
-            else random.randint(maximo_inimigos - 1, maximo_inimigos)
-        )
-        self.inimigos = [
-            Inimigo(random.randint(140, 236), random.randint(30, 236))
-            for _ in range(quantidade)
-        ]
-        
-
+        self.mapa = Mapa()
+        self.inimigos = self.mapa.sala_atual.inimigos
+        self.opcoes = []
+        self.mensagem = []
         self.escolhendo_upgrade = False
 
     def preparar_upgrade(self):
         self.opcoes = sortear_upgrades(self.jogador)
-
         self.mensagem = []
-
         self.escolhendo_upgrade = True
 
         for upgrade in self.opcoes:
@@ -75,19 +54,36 @@ class Roguelike:
     def update_game(self):
 
         if self.escolhendo_upgrade:
-            escolha = None
-            if pyxel.btnp(pyxel.KEY_1):
-                escolha = 0
-            elif pyxel.btnp(pyxel.KEY_2):
-                escolha = 1
 
-            if escolha is not None:
-                self.jogador.pegar_upgrade(self.opcoes[escolha])
-                self.iniciar_fase()
+            if pyxel.btnp(pyxel.KEY_1):
+
+                self.jogador.pegar_upgrade(
+                    self.opcoes[0]
+                )
+
+                self.escolhendo_upgrade = False
+
+
+            if pyxel.btnp(pyxel.KEY_2):
+
+                self.jogador.pegar_upgrade(
+                    self.opcoes[1]
+                )
+
+                self.escolhendo_upgrade = False
 
 
         else:
             self.jogador.update()
+            if self.mapa.tentar_mudar_sala(self.jogador):
+                self.inimigos = self.mapa.sala_atual.inimigos
+
+            self.mapa.coletar_chave(self.jogador)
+            self.mapa.abrir_bau(self.jogador)
+
+            if self.mapa.tentar_proximo_andar(self.jogador):
+                self.inimigos = self.mapa.sala_atual.inimigos
+
             self.jogador.atacar(self.inimigos)
 
             for inimigo in self.inimigos:
@@ -99,8 +95,9 @@ class Roguelike:
                 for inimigo in self.inimigos
                 if inimigo.esta_vivo()
             ]
+            self.mapa.sala_atual.inimigos = self.inimigos
 
-            if not self.inimigos and self.jogador.esta_vivo():
+            if self.mapa.concluir_sala():
                 self.preparar_upgrade()
 
     def draw(self):
@@ -112,12 +109,6 @@ class Roguelike:
 
 
         if self.escolhendo_upgrade:
-            titulo = (
-                f"Fase {self.fase} concluida!"
-                if self.fase > 0
-                else "Prepare-se para a fase 1"
-            )
-            pyxel.text((256 - len(titulo) * 4) // 2, 16, titulo, 10)
             pyxel.text(
                 90,
                 30,
@@ -152,26 +143,37 @@ class Roguelike:
 
                 nivel = getattr(self.opcoes[i], "nivel", 1)
                 titulo = str(i + 1) + " - " + nome
+
                 if nivel > 1:
-                    for linha, texto in enumerate(textwrap.wrap(titulo, width=21)):
+                    linhas = textwrap.wrap(titulo, width=21)
+                    for linha, texto in enumerate(linhas):
                         pyxel.text(x + 5, y + 6 + linha * 8, texto, 7)
-                    pyxel.text(x + 5, y + 28, f"Nivel {nivel - 1} -> {nivel}", 7)
-                    bonus = getattr(self.opcoes[i], "bonus_melhoria", "+2 de dano")
+
+                    pyxel.text(
+                        x + 5,
+                        y + 28,
+                        "Nivel " + str(nivel - 1) + " -> " + str(nivel),
+                        7,
+                    )
+                    bonus = getattr(
+                        self.opcoes[i], "bonus_melhoria", "Melhoria"
+                    )
                     pyxel.text(x + 5, y + 38, bonus, 10)
                 else:
                     pyxel.text(x + 5, y + 22, titulo, 7)
 
-            instrucao = "Pressione 1 ou 2 para escolher"
-            pyxel.text((256 - len(instrucao) * 4) // 2, 154, instrucao, 7)
-            proxima_fase = f"Proxima fase: {self.fase + 1}"
-            pyxel.text((256 - len(proxima_fase) * 4) // 2, 166, proxima_fase, 7)
-
         else:
+            self.mapa.draw()
             self.jogador.draw()
             for inimigo in self.inimigos:
                 inimigo.draw()
-            pyxel.text(8, 8, f"Fase: {self.fase}", 7)
-            pyxel.text(8, 16, f"Inimigos: {len(self.inimigos)}", 7)
+            self.mapa.draw_minimapa()
+            pyxel.text(8, 8, "Arma: " + self.jogador.arma_equipada, 7)
+
+            if self.mapa.jogo_concluido:
+                pyxel.rect(48, 100, 160, 50, 0)
+                pyxel.rectb(48, 100, 160, 50, 7)
+                pyxel.text(73, 120, "Voce venceu os 5 andares!", 10)
             
     
         

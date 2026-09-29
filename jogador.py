@@ -2,12 +2,11 @@ import pyxel
 import math
 from entidades import Entidade
 from colisao import ataque_colidiu, limitar_tela
-from armas import ARMAS, atributos_arma
 
         
 class Personagem(Entidade):
     def __init__(self, x, y, largura, altura, cor):
-        super().__init__(x, y, largura, altura, 50, 3)
+        super().__init__(x, y, largura, altura, 50, 1)
         self.cor = cor
         self.velocidade_base = 1.5
         self.velocidade_dash = 6
@@ -18,46 +17,66 @@ class Personagem(Entidade):
         self.ultima_posicao_mouse = (pyxel.mouse_x, pyxel.mouse_y)
 
         self.defesa = 0
+        self.durabilidade_armadura = 0
+        self.durabilidade_armadura_max = 0
         self.ultima_cura = 0
         self.tempo_exibir_cura = 0
         self.timer_cura = 0
-        self.cooldown_ataque_max = 45  # 1,5s a 30 FPS.
+        self.cooldown_ataque_max = 30
         self.tempo_visual_ataque = 0
         self.area_ultimo_ataque = None
         self.direcao_ultimo_ataque = (1, 0)
         self.proxima_mao = 1  # 1: direita; -1: esquerda
         self.mao_ultimo_soco = 1
+        self.arma_equipada = "soco"
         
-        # Nivel +0 ao equipar; cada melhoria aumenta em um.
-        self.arma = {"tipo": "soco", "nivel": 0}
         self.upgrades = {
-            "armadura": False,
+            "espada": 0,
+            "espadao_dano": 0,
+            "espadao_cooldown": 0,
+            "manopla_dano": 0,
+            "manopla_cooldown": 0,
+            "armadura": 0,
+            "armadura_durabilidade": 0,
             "vida_extra": 0,
             "bota_celeridade": 0,
             "passo_sombrio": False,
-            "aura_espinhos": False,
+            "aura_espinhos": 0,
             "cura_continua": 0
         }
         
         self.inventario = []
 
         self.dash = Dash()
-    
-    def equipar_ou_melhorar_arma(self, tipo):
-        nivel = self.arma["nivel"] + 1 if self.arma["tipo"] == tipo else 0
-        dano, recarga = atributos_arma(tipo, nivel)
-        self.arma = {"tipo": tipo, "nivel": nivel}
-        self.dano = dano
-        self.cooldown_ataque_max = recarga
-        self.cooldown_ataque = 0
-        self.tempo_visual_ataque = 0
-        self.area_ultimo_ataque = None
-        self.proxima_mao = 1
 
+    def equipar_arma(self, tipo):
+        if tipo == "soco":
+            if self.upgrades["manopla_dano"] > 0:
+                self.arma_equipada = "manopla"
+                self.dano = self.upgrades["manopla_dano"]
+                self.cooldown_ataque_max = self.upgrades["manopla_cooldown"]
+            else:
+                self.arma_equipada = "soco"
+                self.dano = 1
+                self.cooldown_ataque_max = 30
+        elif tipo == "espada" and self.upgrades["espada"] > 0:
+            self.arma_equipada = "espada"
+            self.dano = self.upgrades["espada"]
+            self.cooldown_ataque_max = 52.5
+        elif tipo == "espadao" and self.upgrades["espadao_dano"] > 0:
+            self.arma_equipada = "espadao"
+            self.dano = self.upgrades["espadao_dano"]
+            self.cooldown_ataque_max = self.upgrades["espadao_cooldown"]
+        else:
+            self.equipar_arma("soco")
+    
     def hitbox_ataque(self):
-        configuracao = ARMAS[self.arma["tipo"]]
-        alcance = configuracao["alcance"]
-        espessura = configuracao["largura"]
+        alcance = 15
+        espessura = 10
+
+        if self.arma_equipada == "espadao":
+            alcance = 24
+            espessura = 30
         
         centro_x = self.x + self.largura / 2
         centro_y = self.y + self.altura / 2
@@ -111,10 +130,10 @@ class Personagem(Entidade):
         area = self.hitbox_ataque()
         self.area_ultimo_ataque = area
         self.direcao_ultimo_ataque = (self.direcao_x, self.direcao_y)
-        self.tempo_visual_ataque = 10 if self.arma["tipo"] == "espada_grande" else 6
+        self.tempo_visual_ataque = 10 if self.arma_equipada == "espadao" else 6
         self.cooldown_ataque = self.cooldown_ataque_max
 
-        if self.arma["tipo"] in ("soco", "manopla"):
+        if self.arma_equipada in ("soco", "manopla"):
             self.mao_ultimo_soco = self.proxima_mao
             self.proxima_mao *= -1
 
@@ -125,7 +144,7 @@ class Personagem(Entidade):
             if ataque_colidiu(area, inimigo):
                 dano_real = max(0, self.dano - inimigo.defesa)
                 acertou = inimigo.receber_dano(dano_real)
-                if acertou and self.arma["tipo"] != "espada_grande":
+                if acertou and self.arma_equipada != "espadao":
                     break
                 
     def draw_barra_ataque(self):
@@ -139,10 +158,11 @@ class Personagem(Entidade):
             y = self.y + self.altura + 10
 
             progresso = 1 - (self.cooldown_ataque / self.cooldown_ataque_max)
+            progresso = max(0, min(1, progresso))
 
-            pyxel.rect(x, y +5, largura, altura, 1)
+            pyxel.rect(x, y, largura, altura, 1)
 
-            pyxel.rect(x, y +5, largura * progresso, altura, 14)
+            pyxel.rect(x, y, largura * progresso, altura, 14)
         return
     
     def atualizar_cura(self):
@@ -183,10 +203,17 @@ class Personagem(Entidade):
         if not recebeu:
             return False
 
+        if self.durabilidade_armadura > 0:
+            self.durabilidade_armadura -= 1
+
+            if self.durabilidade_armadura == 0:
+                self.defesa = 0
+
         # aura de espinhos
         if self.upgrades["aura_espinhos"] and inimigo:
 
-            dano_refletido = max(1, int(dano * 0.2))
+            porcentagem = self.upgrades["aura_espinhos"] / 100
+            dano_refletido = max(1, int(dano * porcentagem))
 
             inimigo.receber_dano(dano_refletido)
 
@@ -253,6 +280,13 @@ class Personagem(Entidade):
             self.tempo_exibir_cura -= 1
             
         self.atualizar_cura()
+
+        if pyxel.btnp(pyxel.KEY_1):
+            self.equipar_arma("soco")
+        elif pyxel.btnp(pyxel.KEY_2):
+            self.equipar_arma("espada")
+        elif pyxel.btnp(pyxel.KEY_3):
+            self.equipar_arma("espadao")
         
         
         # morte
@@ -353,62 +387,54 @@ class Personagem(Entidade):
             cor_atual
         )
 
-        # Visual do golpe: corte em area, espada ou pequeno punho.
+        # Visual do golpe: espada ou pequeno punho.
         if self.tempo_visual_ataque > 0:
             x, y, largura, altura = self.area_ultimo_ataque
 
-            if self.arma["tipo"] == "espada_grande":
-                # A faixa atravessa a area do golpe; o dano ocorre uma vez.
+            if self.arma_equipada == "espadao":
                 pyxel.rectb(x, y, largura, altura, 10)
                 progresso = (10 - self.tempo_visual_ataque) / 9
-                direcao_x, direcao_y = self.direcao_ultimo_ataque
-                if direcao_x != 0:
+
+                if self.direcao_ultimo_ataque[0] != 0:
                     corte_y = y + progresso * (altura - 4)
                     pyxel.rect(x, corte_y, largura, 4, 7)
                 else:
                     corte_x = x + progresso * (largura - 4)
                     pyxel.rect(corte_x, y, 4, altura, 7)
-            elif self.arma["tipo"] == "espada":
+
+            elif self.arma_equipada == "espada":
                 pyxel.rectb(x, y, largura, altura, 7)
                 if largura > altura:
                     pyxel.rect(x, y + (altura - 3) / 2, largura, 3, 2)
                 else:
                     pyxel.rect(x + (largura - 3) / 2, y, 3, altura, 2)
             else:
+                tamanho = 6 if self.arma_equipada == "manopla" else 4
+                cor_punho = 10 if self.arma_equipada == "manopla" else cor_atual
                 direcao_x, direcao_y = self.direcao_ultimo_ataque
-                largura_punho = 4
-                altura_punho = 4
-                cor_punho = cor_atual
-                if self.arma["tipo"] == "manopla":
-                    if direcao_x != 0:
-                        altura_punho = 6
-                    else:
-                        largura_punho = 6
-                    if cor_atual != 0:
-                        cor_punho = 10
-                punho_x = centro_x - largura_punho / 2
-                punho_y = centro_y - altura_punho / 2
+                punho_x = centro_x - tamanho / 2
+                punho_y = centro_y - tamanho / 2
 
                 if direcao_x == 1:
                     punho_x = self.x + self.largura
                 elif direcao_x == -1:
-                    punho_x = self.x - largura_punho
+                    punho_x = self.x - tamanho
                 elif direcao_y == 1:
                     punho_y = self.y + self.altura
                 else:
-                    punho_y = self.y - altura_punho
+                    punho_y = self.y - tamanho
 
                 # Mantem a mao escolhida durante toda a animacao do soco.
                 deslocamento_braco = 4 * self.mao_ultimo_soco
                 punho_x -= direcao_y * deslocamento_braco
                 punho_y += direcao_x * deslocamento_braco
 
-                pyxel.rect(punho_x, punho_y, largura_punho, altura_punho, cor_punho)
+                pyxel.rect(punho_x, punho_y, tamanho, tamanho, cor_punho)
 
         # Espada em repouso acompanha a direcao do jogador.
-        elif self.arma["tipo"] in ("espada_grande", "espada"):
-            comprimento = 14 if self.arma["tipo"] == "espada_grande" else 10
-            espessura = 5 if self.arma["tipo"] == "espada_grande" else 3
+        elif self.arma_equipada in ("espada", "espadao"):
+            comprimento = 14 if self.arma_equipada == "espadao" else 8
+            espessura = 5 if self.arma_equipada == "espadao" else 3
 
             if self.direcao_x == 1:
                 pyxel.rect(self.x + self.largura, centro_y - espessura / 2,
@@ -424,13 +450,22 @@ class Personagem(Entidade):
                            espessura, comprimento, 2)
 
         # armadura
-        if self.upgrades["armadura"]:
+        if self.durabilidade_armadura > 0:
             pyxel.rectb(
                 self.x - 2,
                 self.y - 2,
                 self.largura + 4,
                 self.altura + 4,
                 10
+            )
+
+            pyxel.text(
+                self.x - 4,
+                self.y - 10,
+                str(self.durabilidade_armadura)
+                + "/"
+                + str(self.durabilidade_armadura_max),
+                10,
             )
 
         # aura de espinhos
@@ -445,7 +480,7 @@ class Personagem(Entidade):
 
         # barra de vida
         barra_x = centro_x - 15
-        barra_y = base_y + 7
+        barra_y = base_y + 3
 
         progresso = max(0, min(1, self.vida / self.vida_max))
 
@@ -459,8 +494,7 @@ class Personagem(Entidade):
             7
         )
 
-        # a função do dash já desenha 15 pixels abaixo
-        self.dash.draw_barra_dash(centro_x, base_y - 5)
+        self.dash.draw_barra_dash(centro_x, base_y + 10)
         self.draw_barra_ataque()
 
 class Dash:
@@ -510,12 +544,13 @@ class Dash:
     def draw_barra_dash(self, x, y):
         if self.cooldown > 0:
          
-            largura = 6
+            largura = 10
             altura = 5
 
             progresso = 1 - (self.cooldown / self.cooldown_max)
 
-            pyxel.rect(x - largura//2 -10,y + 20,largura, altura,1)
+            barra_x = x - largura - 5
+            pyxel.rect(barra_x, y, largura, altura, 1)
 
-            pyxel.rect(x - largura//2 -10, y + 20, largura * progresso, altura, 10)
+            pyxel.rect(barra_x, y, largura * progresso, altura, 10)
         return
