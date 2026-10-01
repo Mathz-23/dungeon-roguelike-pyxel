@@ -95,15 +95,13 @@ class Sala:
 
         if self.tipo == "item":
             if self.bau_aberto:
-                pyxel.rectb(120, 125, 16, 11, 7)
+                pyxel.blt(120, 120, 1, 88, 108, 16, 16, 7)
             else:
-                pyxel.rect(120, 120, 16, 16, 4)
-                pyxel.rectb(120, 120, 16, 16, 7)
+                pyxel.blt(120, 124, 1, 69, 112, 16, 12, 7)
                 pyxel.text(106, 142, "Pressione E", 7)
 
         if self.chave_no_chao:
-            pyxel.rect(124, 124, 9, 5, 10)
-            pyxel.rect(130, 127, 3, 6, 10)
+            pyxel.blt(124, 124, 1, 70, 100, 8, 3, 7)
 
         if self.tipo == "boss" and self.concluida:
             cor_passagem = 11 if tem_chave else 8
@@ -314,6 +312,19 @@ class Mapa:
 
         if sala.tipo != "boss" or not sala.concluida:
             return False
+
+        jogador_direita = jogador.x + jogador.largura
+        jogador_baixo = jogador.y + jogador.altura
+        perto_da_passagem = (
+            jogador.x < 140
+            and jogador_direita > 116
+            and jogador.y < 140
+            and jogador_baixo > 116
+        )
+
+        if not perto_da_passagem:
+            return False
+
         if not pyxel.btnp(pyxel.KEY_E):
             return False
 
