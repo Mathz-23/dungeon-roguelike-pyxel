@@ -8,17 +8,25 @@ from mapa import Mapa
 class Roguelike:
 
     def __init__(self):
+        pyxel.images[0].load(0, 0, "assets/jogador.png")
+        pyxel.images[1].load(0, 0, "assets/jogador_armadura.png")
+        pyxel.images[2].load(0, 0, "assets/aura_espinhos.png")
+        pyxel.images[2].load(32, 0, "assets/passo_sombrio.png")
+        pyxel.images[2].load(96, 0, "assets/jogador_dano.png")
+        pyxel.images[2].load(160, 0, "assets/botas.png")
+        pyxel.images[1].load(64, 64, "assets/itens.png")
         self.menu = Menu()
         self.reiniciar_jogo()
 
     def reiniciar_jogo(self):
 
-        self.jogador = Personagem(50, 50, 10, 10, 7)
+        self.jogador = Personagem(50, 50, 11, 13, 7)
         self.mapa = Mapa()
         self.inimigos = self.mapa.sala_atual.inimigos
         self.opcoes = []
         self.mensagem = []
         self.escolhendo_upgrade = False
+        self.tempo_vitoria = 90
 
     def preparar_upgrade(self):
         self.opcoes = sortear_upgrades(self.jogador)
@@ -52,6 +60,14 @@ class Roguelike:
             pyxel.mouse(True)
 
     def update_game(self):
+
+        if self.mapa.jogo_concluido:
+            self.tempo_vitoria -= 1
+
+            if self.tempo_vitoria <= 0:
+                self.menu.state = "menu"
+
+            return
 
         if self.escolhendo_upgrade:
 

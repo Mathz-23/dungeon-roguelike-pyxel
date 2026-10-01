@@ -187,13 +187,12 @@ class BotaCeleridade(Upgrade):
         
         super().__init__(
         "Bota de Celeridade",
-        "Aumenta a velocidade de movimento e diminui o tempo de recarga do dash"
+        "Aumenta a velocidade de movimento"
     )
         
     def efeito(self, jogador):
         jogador.velocidade_base += 0.5
         jogador.upgrades["bota_celeridade"] += 0.5
-        jogador.dash.cooldown_max -= 15
         
         
 class PassoSombrio(Upgrade):

@@ -21,10 +21,13 @@ class Entidade:
         self.tempo_exibir_dano = 0
 
 
-    def receber_dano(self, dano):
+    def receber_dano(self, dano, ignorar_invencibilidade=False):
 
         # ainda está invulnerável após o último golpe
-        if self.cooldown_receber_dano > 0:
+        if self.cooldown_receber_dano > 0 and not ignorar_invencibilidade:
+            return False
+
+        if dano <= 0:
             return False
 
         self.vida -= dano

@@ -10,6 +10,8 @@ class Personagem(Entidade):
         self.cor = cor
         self.velocidade_base = 1.5
         self.velocidade_dash = 6
+        self.dx = 0
+        self.dy = 0
         
         self.direcao_x = 1
         self.direcao_y = 0
@@ -29,6 +31,11 @@ class Personagem(Entidade):
         self.proxima_mao = 1  # 1: direita; -1: esquerda
         self.mao_ultimo_soco = 1
         self.arma_equipada = "soco"
+
+        # Imagem do jogador: cima, baixo, esquerda e direita.
+        self.direcao_sprite = 1
+        self.quadro_animacao = 0
+        self.tempo_animacao = 0
         
         self.upgrades = {
             "espada": 0,
@@ -71,10 +78,16 @@ class Personagem(Entidade):
             self.equipar_arma("soco")
     
     def hitbox_ataque(self):
-        alcance = 15
-        espessura = 10
-
-        if self.arma_equipada == "espadao":
+        if self.arma_equipada == "soco":
+            alcance = 4
+            espessura = 8
+        elif self.arma_equipada == "manopla":
+            alcance = 10
+            espessura = 10
+        elif self.arma_equipada == "espada":
+            alcance = 16
+            espessura = 10
+        else:
             alcance = 24
             espessura = 30
         
@@ -198,6 +211,15 @@ class Personagem(Entidade):
             dano *= 0.3
             dano = int(dano)
 
+        if dano <= 0:
+            if self.durabilidade_armadura > 0:
+                self.durabilidade_armadura -= 1
+
+                if self.durabilidade_armadura == 0:
+                    self.defesa = 0
+
+            return False
+
         recebeu = super().receber_dano(dano)
 
         if not recebeu:
@@ -215,7 +237,10 @@ class Personagem(Entidade):
             porcentagem = self.upgrades["aura_espinhos"] / 100
             dano_refletido = max(1, int(dano * porcentagem))
 
-            inimigo.receber_dano(dano_refletido)
+            inimigo.receber_dano(
+                dano_refletido,
+                ignorar_invencibilidade=True
+            )
 
         return True
     
@@ -269,6 +294,97 @@ class Personagem(Entidade):
             self.direcao_x = 0
             self.direcao_y = 1 if dy > 0 else -1
 
+    def atualizar_animacao(self):
+        if self.dx == 0 and self.dy == 0:
+            self.quadro_animacao = 0
+            self.tempo_animacao = 0
+            return
+
+        self.tempo_animacao += 1
+
+        if self.tempo_animacao >= 8:
+            self.tempo_animacao = 0
+            self.quadro_animacao = 1 - self.quadro_animacao
+
+    def desenhar_arma(self):
+        if self.arma_equipada not in ("espada", "espadao"):
+            return
+
+        deslocamento_cor = 0
+
+        if self.arma_equipada == "espada":
+            nivel = 1 + (self.upgrades["espada"] - 5) // 2
+            if nivel >= 6:
+                deslocamento_cor = 55
+            elif nivel >= 3:
+                deslocamento_cor = 28
+
+            comprimento = 10
+            origem_cima = (70 + deslocamento_cor, 67, 3, 10)
+            origem_baixo = (75 + deslocamento_cor, 67, 3, 10)
+            origem_esquerda = (80 + deslocamento_cor, 69, 10, 3)
+            origem_direita = (80 + deslocamento_cor, 74, 10, 3)
+        else:
+            melhorias = 0
+            if self.upgrades["espadao_dano"] >= 14:
+                melhorias += 1
+            if self.upgrades["espadao_dano"] >= 18:
+                melhorias += 1
+            if self.upgrades["espadao_cooldown"] <= 82.5:
+                melhorias += 1
+            if self.upgrades["espadao_cooldown"] <= 75:
+                melhorias += 1
+
+            if melhorias >= 4:
+                deslocamento_cor = 55
+            elif melhorias >= 2:
+                deslocamento_cor = 28
+
+            comprimento = 14
+            origem_cima = (70 + deslocamento_cor, 81, 3, 14)
+            origem_baixo = (75 + deslocamento_cor, 81, 3, 14)
+            origem_esquerda = (80 + deslocamento_cor, 91, -14, 3)
+            origem_direita = (80 + deslocamento_cor, 84, 14, 3)
+
+        centro_x = self.x + self.largura / 2
+        centro_y = self.y + self.altura / 2
+
+        direcao_x = self.direcao_x
+        direcao_y = self.direcao_y
+
+        if self.tempo_visual_ataque > 0:
+            direcao_x, direcao_y = self.direcao_ultimo_ataque
+
+        if direcao_x == 1:
+            x = self.x + self.largura
+            y = centro_y - 1
+            origem = origem_direita
+        elif direcao_x == -1:
+            x = self.x - comprimento
+            y = centro_y - 1
+            origem = origem_esquerda
+        elif direcao_y == 1:
+            x = centro_x - 1
+            y = self.y + self.altura
+            origem = origem_baixo
+        else:
+            x = centro_x - 1
+            y = self.y - comprimento
+            origem = origem_cima
+
+        if self.arma_equipada == "espada" and self.tempo_visual_ataque > 0:
+            progresso = (6 - self.tempo_visual_ataque) / 5
+
+            if progresso > 0.5:
+                progresso = 1 - progresso
+
+            distancia_estocada = progresso * 12
+            x += direcao_x * distancia_estocada
+            y += direcao_y * distancia_estocada
+
+        origem_x, origem_y, largura, altura = origem
+        pyxel.blt(x, y, 1, origem_x, origem_y, largura, altura, 7)
+
     def update(self):
         #dano
         self.atualizar_temporizadores()
@@ -297,16 +413,21 @@ class Personagem(Entidade):
 
         if pyxel.btn(pyxel.KEY_D):
             self.dx += 1
+            self.direcao_sprite = 3
 
         if pyxel.btn(pyxel.KEY_A):
             self.dx -= 1
+            self.direcao_sprite = 2
 
         if pyxel.btn(pyxel.KEY_S):
             self.dy += 1
+            self.direcao_sprite = 1
 
         if pyxel.btn(pyxel.KEY_W):
             self.dy -= 1
+            self.direcao_sprite = 0
 
+        self.atualizar_animacao()
 
         if pyxel.btn(pyxel.KEY_SHIFT) and (self.dx != 0 or self.dy != 0):
             
@@ -378,17 +499,62 @@ class Personagem(Entidade):
                 8
             )
 
-        # corpo
-        pyxel.rect(
+        # Imagem do jogador. A cor 7 (branco) fica transparente.
+        sprite_x = 1 + self.direcao_sprite * 13
+        sprite_y = 1
+
+        if self.dx != 0 or self.dy != 0:
+            sprite_y = 16 + self.quadro_animacao * 15
+
+        banco_imagem = 0
+        if self.durabilidade_armadura > 0:
+            banco_imagem = 1
+
+        if self.cooldown_receber_dano > 0:
+            banco_imagem = 2
+            sprite_x = 97 + self.direcao_sprite * 13
+
+        if self.dash.invencivel:
+            banco_imagem = 2
+            sprite_x = 32 + self.direcao_sprite * 13
+            sprite_y = self.quadro_animacao * 15
+
+        pyxel.blt(
             self.x,
             self.y,
-            self.largura,
-            self.altura,
-            cor_atual
+            banco_imagem,
+            sprite_x,
+            sprite_y,
+            11,
+            13,
+            7
         )
 
-        # Visual do golpe: espada ou pequeno punho.
-        if self.tempo_visual_ataque > 0:
+        if self.upgrades["bota_celeridade"] > 0:
+            botas_x = 161 + self.direcao_sprite * 13
+            botas_y = 1
+
+            if self.dx != 0 or self.dy != 0:
+                botas_y = 16 + self.quadro_animacao * 15
+
+            pyxel.blt(
+                self.x,
+                self.y,
+                2,
+                botas_x,
+                botas_y,
+                11,
+                13,
+                7
+            )
+
+        self.desenhar_arma()
+
+        # Mostra a area atingida pela espada e pelo espadao.
+        if (
+            self.tempo_visual_ataque > 0
+            and self.arma_equipada in ("espada", "espadao")
+        ):
             x, y, largura, altura = self.area_ultimo_ataque
 
             if self.arma_equipada == "espadao":
@@ -401,64 +567,37 @@ class Personagem(Entidade):
                 else:
                     corte_x = x + progresso * (largura - 4)
                     pyxel.rect(corte_x, y, 4, altura, 7)
-
-            elif self.arma_equipada == "espada":
+            else:
                 pyxel.rectb(x, y, largura, altura, 7)
-                if largura > altura:
-                    pyxel.rect(x, y + (altura - 3) / 2, largura, 3, 2)
-                else:
-                    pyxel.rect(x + (largura - 3) / 2, y, 3, altura, 2)
+
+        # Visual do golpe dos punhos e da manopla.
+        if (
+            self.tempo_visual_ataque > 0
+            and self.arma_equipada in ("soco", "manopla")
+        ):
+            tamanho = 6 if self.arma_equipada == "manopla" else 4
+            cor_punho = 10 if self.arma_equipada == "manopla" else cor_atual
+            direcao_x, direcao_y = self.direcao_ultimo_ataque
+            punho_x = centro_x - tamanho / 2
+            punho_y = centro_y - tamanho / 2
+
+            if direcao_x == 1:
+                punho_x = self.x + self.largura
+            elif direcao_x == -1:
+                punho_x = self.x - tamanho
+            elif direcao_y == 1:
+                punho_y = self.y + self.altura
             else:
-                tamanho = 6 if self.arma_equipada == "manopla" else 4
-                cor_punho = 10 if self.arma_equipada == "manopla" else cor_atual
-                direcao_x, direcao_y = self.direcao_ultimo_ataque
-                punho_x = centro_x - tamanho / 2
-                punho_y = centro_y - tamanho / 2
+                punho_y = self.y - tamanho
 
-                if direcao_x == 1:
-                    punho_x = self.x + self.largura
-                elif direcao_x == -1:
-                    punho_x = self.x - tamanho
-                elif direcao_y == 1:
-                    punho_y = self.y + self.altura
-                else:
-                    punho_y = self.y - tamanho
+            deslocamento_braco = 4 * self.mao_ultimo_soco
+            punho_x -= direcao_y * deslocamento_braco
+            punho_y += direcao_x * deslocamento_braco
 
-                # Mantem a mao escolhida durante toda a animacao do soco.
-                deslocamento_braco = 4 * self.mao_ultimo_soco
-                punho_x -= direcao_y * deslocamento_braco
-                punho_y += direcao_x * deslocamento_braco
-
-                pyxel.rect(punho_x, punho_y, tamanho, tamanho, cor_punho)
-
-        # Espada em repouso acompanha a direcao do jogador.
-        elif self.arma_equipada in ("espada", "espadao"):
-            comprimento = 14 if self.arma_equipada == "espadao" else 8
-            espessura = 5 if self.arma_equipada == "espadao" else 3
-
-            if self.direcao_x == 1:
-                pyxel.rect(self.x + self.largura, centro_y - espessura / 2,
-                           comprimento, espessura, 2)
-            elif self.direcao_x == -1:
-                pyxel.rect(self.x - comprimento, centro_y - espessura / 2,
-                           comprimento, espessura, 2)
-            elif self.direcao_y == 1:
-                pyxel.rect(centro_x - espessura / 2, self.y + self.altura,
-                           espessura, comprimento, 2)
-            else:
-                pyxel.rect(centro_x - espessura / 2, self.y - comprimento,
-                           espessura, comprimento, 2)
+            pyxel.rect(punho_x, punho_y, tamanho, tamanho, cor_punho)
 
         # armadura
         if self.durabilidade_armadura > 0:
-            pyxel.rectb(
-                self.x - 2,
-                self.y - 2,
-                self.largura + 4,
-                self.altura + 4,
-                10
-            )
-
             pyxel.text(
                 self.x - 4,
                 self.y - 10,
@@ -470,12 +609,18 @@ class Personagem(Entidade):
 
         # aura de espinhos
         if self.upgrades["aura_espinhos"]:
-            pyxel.rectb(
-                self.x - 4,
-                self.y - 4,
-                self.largura + 8,
-                self.altura + 8,
-                8
+            aura_x = self.x + (self.largura - 23) / 2
+            aura_y = self.y + (self.altura - 23) / 2
+
+            pyxel.blt(
+                aura_x,
+                aura_y,
+                2,
+                0,
+                0,
+                23,
+                23,
+                7
             )
 
         # barra de vida
