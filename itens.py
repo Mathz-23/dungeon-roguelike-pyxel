@@ -10,7 +10,6 @@ class Espada:
         if jogador.upgrades["espada"] > 0:
             return False
 
-        jogador.inventario.append(self)
         jogador.upgrades["espada"] = 5
         jogador.arma_equipada = "espada"
         jogador.dano = 5
@@ -27,7 +26,6 @@ class Espadao:
         if jogador.upgrades["espadao_dano"] > 0:
             return False
 
-        jogador.inventario.append(self)
         jogador.upgrades["espadao_dano"] = 10
         jogador.upgrades["espadao_cooldown"] = 90
         jogador.arma_equipada = "espadao"
@@ -48,7 +46,6 @@ class Armadura:
             self.mensagem = "Voce trocou sua armadura por uma melhor"
             return True
 
-        jogador.inventario.append(self)
         jogador.upgrades["armadura"] = 4
         jogador.defesa = 4
         jogador.durabilidade_armadura_max = 10
@@ -66,7 +63,6 @@ class Manopla:
         if jogador.upgrades["manopla_dano"] > 0:
             return False
 
-        jogador.inventario.append(self)
         jogador.upgrades["manopla_dano"] = 2
         jogador.upgrades["manopla_cooldown"] = 30
         jogador.arma_equipada = "manopla"
