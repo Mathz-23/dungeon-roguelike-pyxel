@@ -24,7 +24,6 @@ class Sala:
         self.bau_aberto = False
         self.item = None
         self.chave_no_chao = False
-        self.cor_chao = random.choice((1, 5, 13))
         self.portas = {
             "cima": linha > 0,
             "baixo": linha < 2,
@@ -40,21 +39,27 @@ class Sala:
             if not (90 < x < 166 and 90 < y < 166):
                 break
 
-        inimigo = Inimigo(x, y)
+        if boss:
+            tipo = "boss"
+            variante = 1
+        elif elite:
+            tipo = "elite"
+            variante = random.randint(1, 2)
+        else:
+            tipo = "comum"
+            variante = random.randint(1, 2)
+
+        inimigo = Inimigo(x, y, tipo, variante)
 
         if elite:
             inimigo.vida = 20 + numero_andar * 5
             inimigo.vida_max = inimigo.vida
             inimigo.dano = 12 + numero_andar * 2
-            inimigo.cor = 9
 
         if boss:
             inimigo.vida = 50 + numero_andar * 15
             inimigo.vida_max = inimigo.vida
             inimigo.dano = 15 + numero_andar * 3
-            inimigo.cor = 8
-            inimigo.largura = 16
-            inimigo.altura = 16
             inimigo.velocidade = 0.7
 
         return inimigo
@@ -80,18 +85,8 @@ class Sala:
         quantidade = random.randint(minimo, maximo)
         return [self.criar_inimigo(numero_andar) for _ in range(quantidade)]
 
-    def draw(self, tem_chave):
-        pyxel.cls(self.cor_chao)
-        cor_parede = 6
-
-        self.desenhar_parede_horizontal(0, "cima", cor_parede)
-        self.desenhar_parede_horizontal(
-            TAMANHO_TELA - ESPESSURA_PAREDE, "baixo", cor_parede
-        )
-        self.desenhar_parede_vertical(0, "esquerda", cor_parede)
-        self.desenhar_parede_vertical(
-            TAMANHO_TELA - ESPESSURA_PAREDE, "direita", cor_parede
-        )
+    def draw(self, tem_chave, imagem_sala):
+        pyxel.blt(0, 0, imagem_sala, 0, 0, 256, 256)
 
         if self.tipo == "item":
             if self.bau_aberto:
@@ -107,24 +102,6 @@ class Sala:
             cor_passagem = 11 if tem_chave else 8
             pyxel.circ(128, 128, 12, cor_passagem)
             pyxel.text(106, 145, "Pressione E", 7)
-
-    def desenhar_parede_horizontal(self, y, direcao, cor):
-        if self.portas[direcao]:
-            pyxel.rect(0, y, INICIO_PORTA, ESPESSURA_PAREDE, cor)
-            pyxel.rect(
-                FIM_PORTA, y, TAMANHO_TELA - FIM_PORTA, ESPESSURA_PAREDE, cor
-            )
-        else:
-            pyxel.rect(0, y, TAMANHO_TELA, ESPESSURA_PAREDE, cor)
-
-    def desenhar_parede_vertical(self, x, direcao, cor):
-        if self.portas[direcao]:
-            pyxel.rect(x, 0, ESPESSURA_PAREDE, INICIO_PORTA, cor)
-            pyxel.rect(
-                x, FIM_PORTA, ESPESSURA_PAREDE, TAMANHO_TELA - FIM_PORTA, cor
-            )
-        else:
-            pyxel.rect(x, 0, ESPESSURA_PAREDE, TAMANHO_TELA, cor)
 
 class Andar:
     def __init__(self, numero, posicao_inicial):
@@ -173,10 +150,19 @@ class Mapa:
         self.tem_chave = False
         self.jogo_concluido = False
         self.tempo_mensagem_chave = 0
+        self.tempo_mensagem_chave_coletada = 0
         self.tempo_mensagem_item = 0
         self.mensagem_item = ""
 
-        posicao_inicial = random.randint(0, 8)
+        # Sala 8, seguindo a organizacao de um teclado de telefone.
+        posicao_inicial = 7
+        self.acesso_infinito_disponivel = False
+        self.posicao_acesso_infinito = None
+        self.imagens_salas = []
+        for numero in range(1, 10):
+            imagem = pyxel.Image(256, 256)
+            imagem.load(0, 0, "assets/sala_" + str(numero) + ".png")
+            self.imagens_salas.append(imagem)
 
         for numero in range(1, 6):
             andar = Andar(numero, posicao_inicial)
@@ -271,6 +257,14 @@ class Mapa:
 
         if perto_do_bau and pyxel.btnp(pyxel.KEY_E):
             sala.bau_aberto = True
+
+            if self.numero_andar >= 3 and random.random() < 0.35:
+                sala.item = None
+                sala.item_coletado = False
+                self.tempo_mensagem_item = 90
+                self.mensagem_item = "O bau esta vazio"
+                return
+
             sala.item = sortear_item(jogador)
             sala.item_coletado = sala.item.pegar(jogador)
             self.tempo_mensagem_item = 90
@@ -286,6 +280,9 @@ class Mapa:
 
     def coletar_chave(self, jogador):
         sala = self.sala_atual
+
+        if self.tempo_mensagem_chave_coletada > 0:
+            self.tempo_mensagem_chave_coletada -= 1
 
         if not sala.chave_no_chao:
             return
@@ -303,6 +300,7 @@ class Mapa:
         if encostou_na_chave:
             sala.chave_no_chao = False
             self.tem_chave = True
+            self.tempo_mensagem_chave_coletada = 45
 
     def tentar_proximo_andar(self, jogador):
         sala = self.sala_atual
@@ -344,7 +342,17 @@ class Mapa:
         return True
 
     def draw(self):
-        self.sala_atual.draw(self.tem_chave)
+        posicao = self.linha_atual * 3 + self.coluna_atual
+        self.sala_atual.draw(self.tem_chave, self.imagens_salas[posicao])
+
+        if (
+            self.acesso_infinito_disponivel
+            and (self.linha_atual, self.coluna_atual)
+            == self.posicao_acesso_infinito
+        ):
+            pyxel.circ(128, 128, 12, 0)
+            pyxel.circb(128, 128, 12, 10)
+            pyxel.text(106, 145, "Pressione E", 7)
 
         if self.tempo_mensagem_chave > 0:
             mensagem = "A porta esta trancada, a chave esta com algum dos guardas"
@@ -354,6 +362,35 @@ class Mapa:
         if self.tempo_mensagem_item > 0:
             pyxel.rect(35, 173, 186, 15, 0)
             pyxel.text(43, 178, self.mensagem_item, 7)
+
+        if self.tempo_mensagem_chave_coletada > 0:
+            pyxel.rect(79, 173, 98, 15, 0)
+            pyxel.rectb(79, 173, 98, 15, 10)
+            pyxel.text(94, 178, "Chave encontrada!", 10)
+
+    def preparar_acesso_infinito(self):
+        self.jogo_concluido = False
+        self.acesso_infinito_disponivel = True
+        # A passagem aparece na sala em que o ultimo boss foi derrotado.
+        self.posicao_acesso_infinito = (self.linha_atual, self.coluna_atual)
+        for andar in self.andares:
+            for fileira in andar.salas:
+                for sala in fileira:
+                    sala.inimigos = []
+
+    def tentar_entrar_infinito(self, jogador):
+        if not self.acesso_infinito_disponivel:
+            return False
+        if (self.linha_atual, self.coluna_atual) != self.posicao_acesso_infinito:
+            return False
+
+        perto = (
+            jogador.x < 140
+            and jogador.x + jogador.largura > 116
+            and jogador.y < 140
+            and jogador.y + jogador.altura > 116
+        )
+        return perto and pyxel.btnp(pyxel.KEY_E)
 
     def draw_minimapa(self):
         tamanho = 5

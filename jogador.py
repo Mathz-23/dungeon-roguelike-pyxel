@@ -44,16 +44,12 @@ class Personagem(Entidade):
             "manopla_dano": 0,
             "manopla_cooldown": 0,
             "armadura": 0,
-            "armadura_durabilidade": 0,
-            "vida_extra": 0,
             "bota_celeridade": 0,
             "passo_sombrio": False,
             "aura_espinhos": 0,
             "cura_continua": 0
         }
         
-        self.inventario = []
-
         self.dash = Dash()
 
     def equipar_arma(self, tipo):
@@ -82,8 +78,8 @@ class Personagem(Entidade):
             alcance = 4
             espessura = 8
         elif self.arma_equipada == "manopla":
-            alcance = 10
-            espessura = 10
+            alcance = 14
+            espessura = 12
         elif self.arma_equipada == "espada":
             alcance = 16
             espessura = 10
@@ -206,6 +202,9 @@ class Personagem(Entidade):
         if self.dash.invencivel:
             return False
 
+        if self.cooldown_receber_dano > 0:
+            return False
+
         # redução do dash
         if self.dash.reducao_dano:
             dano *= 0.3
@@ -217,6 +216,8 @@ class Personagem(Entidade):
 
                 if self.durabilidade_armadura == 0:
                     self.defesa = 0
+
+                self.cooldown_receber_dano = 10
 
             return False
 
@@ -246,9 +247,6 @@ class Personagem(Entidade):
     
     
     def pegar_upgrade(self, upgrade):
-
-        self.inventario.append(upgrade)
-
         upgrade.efeito(self)
                 
 
@@ -398,16 +396,13 @@ class Personagem(Entidade):
         self.atualizar_cura()
 
         if pyxel.btnp(pyxel.KEY_1):
-            self.equipar_arma("soco")
-        elif pyxel.btnp(pyxel.KEY_2):
             self.equipar_arma("espada")
-        elif pyxel.btnp(pyxel.KEY_3):
+        elif pyxel.btnp(pyxel.KEY_2):
             self.equipar_arma("espadao")
+        elif pyxel.btnp(pyxel.KEY_3):
+            self.equipar_arma("soco")
         
         
-        # morte
-        if self.vida <= 0:
-            pyxel.quit()
         self.dx = 0
         self.dy = 0
 
@@ -429,7 +424,7 @@ class Personagem(Entidade):
 
         self.atualizar_animacao()
 
-        if pyxel.btn(pyxel.KEY_SHIFT) and (self.dx != 0 or self.dy != 0):
+        if pyxel.btnp(pyxel.KEY_SHIFT) and (self.dx != 0 or self.dy != 0):
             
             self.dash.usar(
                 self.upgrades["passo_sombrio"]
@@ -470,7 +465,7 @@ class Personagem(Entidade):
             cor_atual = 0
 
         if (
-            self.cooldown_receber_dano > 0
+            self.tempo_exibir_dano > 0
             and not self.upgrades["passo_sombrio"]
         ):
             cor_atual = 13
@@ -510,7 +505,7 @@ class Personagem(Entidade):
         if self.durabilidade_armadura > 0:
             banco_imagem = 1
 
-        if self.cooldown_receber_dano > 0:
+        if self.tempo_exibir_dano > 0:
             banco_imagem = 2
             sprite_x = 97 + self.direcao_sprite * 13
 
