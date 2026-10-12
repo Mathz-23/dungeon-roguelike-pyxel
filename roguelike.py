@@ -82,8 +82,11 @@ class Roguelike:
         self.menu.update()
         pyxel.mouse(True)
 
-        if estado_anterior == "menu" and self.menu.state == "game":
+        if estado_anterior == "mode_select" and self.menu.state == "game":
             self.reiniciar_jogo()
+            if self.menu.modo_selecionado == "infinite":
+                self.iniciar_modo_infinito()
+            return
 
         if estado_anterior == "victory" and self.menu.state == "infinite":
             self.mapa.preparar_acesso_infinito()
