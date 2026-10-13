@@ -5,6 +5,7 @@ class Menu:
     def __init__(self):
         pyxel.mouse(True)
         self.state = "menu"
+        self.modo_selecionado = "normal"
 
         self.imagem_menu = pyxel.Image(256, 256)
         self.imagem_menu.load(0, 0, "assets/menu.png")
@@ -29,13 +30,23 @@ class Menu:
     def update(self):
         if self.state == "menu":
             if self.clicou(78, 129, 177, 148):
-                self.state = "game"
+                self.state = "mode_select"
             elif self.clicou(78, 159, 177, 178):
                 self.state = "rules"
             elif self.clicou(78, 189, 177, 208):
                 self.state = "options"
             elif self.clicou(78, 219, 177, 238):
                 pyxel.quit()
+
+        elif self.state == "mode_select":
+            if self.clicou(78, 129, 177, 148):
+                self.modo_selecionado = "normal"
+                self.state = "game"
+            elif self.clicou(78, 159, 177, 178):
+                self.modo_selecionado = "infinite"
+                self.state = "game"
+            elif self.clicou(78, 219, 177, 238):
+                self.state = "menu"
 
         elif self.state in ("rules", "options"):
             if self.clicou(22, 222, 97, 232):
@@ -61,9 +72,21 @@ class Menu:
             if pyxel.btnp(pyxel.KEY_P):
                 self.state = "pause"
 
+    def desenhar_botao_modo(self, y, texto):
+        # Reutiliza a moldura original e troca apenas o texto do botao.
+        pyxel.blt(78, y, self.imagem_menu, 78, 129, 100, 20)
+        pyxel.rect(81, y + 3, 94, 14, 1)
+        pyxel.text(128 - len(texto) * 2, y + 7, texto, 13)
+
     def draw(self):
         if self.state == "menu":
             pyxel.blt(0, 0, self.imagem_menu, 0, 0, 256, 256)
+        elif self.state == "mode_select":
+            pyxel.blt(0, 0, self.imagem_menu, 0, 0, 256, 256)
+            pyxel.rect(78, 129, 100, 110, 0)
+            self.desenhar_botao_modo(129, "NORMAL MODE")
+            self.desenhar_botao_modo(159, "INFINITE MODE")
+            self.desenhar_botao_modo(219, "BACK")
         elif self.state == "rules":
             pyxel.blt(0, 0, self.imagem_regras, 0, 0, 256, 256)
             pyxel.text(24, 42, "DERROTE OS INIMIGOS DE CADA SALA.", 7)

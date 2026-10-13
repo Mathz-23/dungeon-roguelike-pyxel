@@ -92,6 +92,7 @@ class ModoInfinito:
                 tipo_wave = "COMUM"
 
             waves_ate_upgrade = 2 - self.wave % 2
-            pyxel.text(8, 8, "TIPO: " + tipo_wave, 7)
-            pyxel.text(8, 16, "UPGRADE EM: " + str(waves_ate_upgrade), 7)
-            pyxel.text(8, 24, "FORCA: " + str(self.wave), 7)
+            # Os icones das armas ocupam y=8 ate y=20.
+            pyxel.text(8, 24, "TIPO: " + tipo_wave, 7)
+            pyxel.text(8, 32, "UPGRADE EM: " + str(waves_ate_upgrade), 7)
+            pyxel.text(8, 40, "FORCA: " + str(self.wave), 7)
